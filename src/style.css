@@ -619,6 +619,24 @@ textarea:focus {
   margin-left: auto;
   border: 0;
 }
+.logout-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  margin-left: auto;
+  padding: 8px 10px;
+  color: #6f8178;
+  background: transparent;
+  border: 1px solid #cddbd3;
+  border-radius: 4px;
+  font-size: 11px;
+}
+.logout-icon-btn:hover {
+  color: #a14f46;
+  background: #fff8f5;
+  border-color: #e5c7bf;
+}
 .student-head {
   align-items: center;
 }

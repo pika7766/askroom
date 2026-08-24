@@ -391,11 +391,12 @@ function App() {
   };
   const joinCourse = (event) => {
     event.preventDefault();
+    const normalizedCode = joinCode.trim().replace(/\s+/g, "").toLowerCase();
     const course = courses.find(
-      (item) => item.code.toLowerCase() === joinCode.trim().toLowerCase(),
+      (item) => item.code.trim().replace(/\s+/g, "").toLowerCase() === normalizedCode,
     );
     if (!course) return notify("找不到這個課程代碼，請檢查後再試一次");
-    if (course.private && joinPassword !== course.password)
+    if (course.private && joinPassword.trim() !== course.password.trim())
       return notify("課程密碼不正確");
     const nextUsers = users.map((user) =>
       user.id === currentUser.id
@@ -406,6 +407,7 @@ function App() {
     setUsers(nextUsers);
     broadcast("askroom-users", nextUsers);
     setCurrentUser(updatedUser);
+    setSelectedCourse(course);
     setJoinCode("");
     setJoinPassword("");
     setModal(null);
@@ -584,6 +586,7 @@ function App() {
           setUserLoginForm={setUserLoginForm}
           setModal={setModal}
           setCurrentUser={setCurrentUser}
+          setSelectedCourse={setSelectedCourse}
           notify={notify}
           courseQuestions={courseQuestions}
           newQuestion={newQuestion}
@@ -1084,6 +1087,7 @@ function UserView({
   setUserLoginForm,
   setModal,
   setCurrentUser,
+  setSelectedCourse,
   courseQuestions,
   newQuestion,
   setNewQuestion,
@@ -1133,11 +1137,18 @@ function UserView({
             <span>匿名學習者</span>
           </div>
           <button
-            className="icon-btn"
+            className="logout-icon-btn"
+            type="button"
             title="登出"
-            onClick={() => setCurrentUser(null)}
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              setCurrentUser(null);
+              setSelectedCourse(null);
+              setModal(null);
+            }}
           >
-            <LogOut size={16} />
+            <LogOut size={16} /> <span>登出</span>
           </button>
         </div>
         <div className="side-heading">
