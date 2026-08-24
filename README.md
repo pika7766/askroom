@@ -60,6 +60,8 @@ VITE_ADMIN_PASSWORD=change-this-password
 3. 在 Render Environment 設定 `VITE_ADMIN_ACCOUNT` 與 `VITE_ADMIN_PASSWORD`。
 4. 部署完成後，使用 Render 提供的網址開啟平台。
 
+如果 Web Service 是手動建立的，請在 Render 建立 PostgreSQL，然後到 Web Service 的 Environment 新增 `DATABASE_URL`，值選擇該資料庫的 **Internal Database URL**。沒有這個變數時，服務會停止並提示資料庫尚未連接。
+
 課程、使用者和提問會儲存在 PostgreSQL，因此不同手機與瀏覽器會讀到同一份資料。每次修改管理員環境變數後都需要重新部署，因為它們會在 build 時寫入前端 bundle。
 
 ## GitHub

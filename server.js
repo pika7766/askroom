@@ -6,6 +6,10 @@ import { fileURLToPath } from "node:url";
 const { Pool } = pg;
 const app = express();
 const port = process.env.PORT || 10000;
+if (!process.env.DATABASE_URL) {
+  console.error("DATABASE_URL is missing. Create a Render PostgreSQL database and connect its Internal Database URL to this Web Service.");
+  process.exit(1);
+}
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false });
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
