@@ -15,7 +15,7 @@ Askroom 是一個給課堂使用的匿名提問平台。學生使用帳號登入
 - 課程可設定是否開放老師回覆
 - 課程可設定是否開放照片與檔案上傳
 - 跨瀏覽器分頁同步課程、提問與回覆通知
-- 純前端 Vite + React 應用程式，資料目前保存於瀏覽器 localStorage
+- Vite + React 前端搭配 Node API 與 PostgreSQL，共享課程、帳號與提問資料
 
 ## 本機啟動
 
@@ -46,20 +46,21 @@ VITE_ADMIN_PASSWORD=change-this-password
 
 ## Render 部署
 
-本專案包含 `render.yaml`，使用 Render Static Site：
+本專案包含 `render.yaml`，使用 Render Web Service 與 PostgreSQL：
 
 - Build Command：`npm install && npm run build`
-- Publish Directory：`dist`
-- SPA fallback：所有路徑 rewrite 到 `/index.html`
+- Start Command：`npm start`
+- Node 服務會發布 `dist`，並處理 SPA fallback
+- PostgreSQL 透過 `DATABASE_URL` 連接
 
 部署步驟：
 
 1. 將 GitHub repository 連接到 Render。
-2. Render 讀取 repository 根目錄的 `render.yaml`。
+2. Render 讀取 repository 根目錄的 `render.yaml`，建立 Web Service 與 PostgreSQL。
 3. 在 Render Environment 設定 `VITE_ADMIN_ACCOUNT` 與 `VITE_ADMIN_PASSWORD`。
 4. 部署完成後，使用 Render 提供的網址開啟平台。
 
-每次修改環境變數後都需要重新部署，因為它們會在 build 時寫入前端 bundle。
+課程、使用者和提問會儲存在 PostgreSQL，因此不同手機與瀏覽器會讀到同一份資料。每次修改管理員環境變數後都需要重新部署，因為它們會在 build 時寫入前端 bundle。
 
 ## GitHub
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
   BookOpen,
@@ -167,6 +167,7 @@ function App() {
     allowReplies: true,
     allowFiles: false,
   });
+  const remoteStateReady = useRef(false);
 
   useEffect(
     () => localStorage.setItem("askroom-courses", JSON.stringify(courses)),
@@ -180,6 +181,34 @@ function App() {
     () => localStorage.setItem("askroom-questions", JSON.stringify(questions)),
     [questions],
   );
+  useEffect(() => {
+    let active = true;
+    const pullRemoteState = async () => {
+      try {
+        const response = await fetch("/api/state");
+        if (!response.ok) return;
+        const remoteState = await response.json();
+        if (!active) return;
+        if (remoteState) {
+          setCourses(remoteState.courses.map(normalizeCourse));
+          setUsers(remoteState.users);
+          setQuestions(remoteState.questions.map(normalizeQuestion));
+        } else if (!remoteStateReady.current) {
+          await fetch("/api/state", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ courses, users, questions }),
+          });
+        }
+        remoteStateReady.current = true;
+      } catch {
+        // Local development can run without the API server.
+      }
+    };
+    pullRemoteState();
+    const timer = setInterval(pullRemoteState, 3000);
+    return () => { active = false; clearInterval(timer); };
+  }, []);
   useEffect(() => {
     if (view !== "user" || currentUser || sessionStorage.getItem("askroom-logged-out") === "true") return;
     const autoUser = users.find((user) => user.autoLoginKey === getDeviceKey());
@@ -268,6 +297,15 @@ function App() {
   };
   const broadcast = (key, value) => {
     localStorage.setItem(key, JSON.stringify(value));
+    const nextState = { courses, users, questions };
+    if (key === "askroom-courses") nextState.courses = value;
+    if (key === "askroom-users") nextState.users = value;
+    if (key === "askroom-questions") nextState.questions = value;
+    fetch("/api/state", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(nextState),
+    }).catch(() => {});
     if ("BroadcastChannel" in window)
       new BroadcastChannel("askroom-sync").postMessage({
         key,
