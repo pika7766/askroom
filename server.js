@@ -6,20 +6,33 @@ import { fileURLToPath } from "node:url";
 const { Pool } = pg;
 const app = express();
 const port = process.env.PORT || 10000;
-if (!process.env.DATABASE_URL) {
-  console.error("DATABASE_URL is missing. Create a Render PostgreSQL database and connect its Internal Database URL to this Web Service.");
-  process.exit(1);
-}
-const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false });
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+let appState = null;
+let pool = null;
+const useMemoryStorage = !process.env.DATABASE_URL;
+
+if (!useMemoryStorage) {
+  pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false });
+  await pool.query(`CREATE TABLE IF NOT EXISTS app_state (id integer PRIMARY KEY, data jsonb NOT NULL, updated_at timestamptz NOT NULL DEFAULT now())`);
+  console.log("✓ PostgreSQL connected");
+} else {
+  console.log("⚠ Running with in-memory storage (not persistent). To enable persistent shared state, set DATABASE_URL environment variable with a PostgreSQL connection string.");
+}
 
 app.use(express.json({ limit: "12mb" }));
 
-await pool.query(`CREATE TABLE IF NOT EXISTS app_state (id integer PRIMARY KEY, data jsonb NOT NULL, updated_at timestamptz NOT NULL DEFAULT now())`);
-
 app.get("/api/state", async (_request, response) => {
-  const result = await pool.query("SELECT data FROM app_state WHERE id = 1");
-  response.json(result.rows[0]?.data ?? null);
+  try {
+    if (useMemoryStorage) {
+      return response.json(appState);
+    }
+    const result = await pool.query("SELECT data FROM app_state WHERE id = 1");
+    response.json(result.rows[0]?.data ?? null);
+  } catch (error) {
+    console.error("GET /api/state failed:", error.message);
+    response.status(500).json({ error: "Failed to fetch state" });
+  }
 });
 
 app.put("/api/state", async (request, response) => {
@@ -27,12 +40,21 @@ app.put("/api/state", async (request, response) => {
   if (!state || !Array.isArray(state.courses) || !Array.isArray(state.users) || !Array.isArray(state.questions)) {
     return response.status(400).json({ error: "Invalid application state" });
   }
-  await pool.query(
-    `INSERT INTO app_state (id, data) VALUES (1, $1::jsonb)
-     ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()`,
-    [JSON.stringify(state)],
-  );
-  response.status(204).end();
+  try {
+    if (useMemoryStorage) {
+      appState = state;
+      return response.status(204).end();
+    }
+    await pool.query(
+      `INSERT INTO app_state (id, data) VALUES (1, $1::jsonb)
+       ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()`,
+      [JSON.stringify(state)],
+    );
+    response.status(204).end();
+  } catch (error) {
+    console.error("PUT /api/state failed:", error.message);
+    response.status(500).json({ error: "Failed to save state" });
+  }
 });
 
 app.use(express.static(path.join(__dirname, "dist")));
