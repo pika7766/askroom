@@ -181,7 +181,7 @@ function App() {
     [questions],
   );
   useEffect(() => {
-    if (view !== "user" || currentUser) return;
+    if (view !== "user" || currentUser || sessionStorage.getItem("askroom-logged-out") === "true") return;
     const autoUser = users.find((user) => user.autoLoginKey === getDeviceKey());
     if (autoUser) setCurrentUser(autoUser);
   }, [currentUser, users, view]);
@@ -306,6 +306,7 @@ function App() {
     event.preventDefault();
     const user = users.find((item) => item.name === userLoginForm.account && item.password === userLoginForm.password);
     if (!user) return notify("帳號或密碼不正確");
+    sessionStorage.removeItem("askroom-logged-out");
     const updatedUser = { ...user, autoLoginKey: getDeviceKey() };
     const nextUsers = users.map((item) => item.id === user.id ? updatedUser : item);
     setUsers(nextUsers);
@@ -418,6 +419,7 @@ function App() {
     if (!accountForm.name || !accountForm.password)
       return notify("請輸入暱稱與密碼");
     const user = { id: Date.now(), ...accountForm, access: [], autoLoginKey: getDeviceKey() };
+    sessionStorage.removeItem("askroom-logged-out");
     const nextUsers = [...users, user];
     setUsers(nextUsers);
     broadcast("askroom-users", nextUsers);
@@ -522,6 +524,12 @@ function App() {
     setPasswordForm({ old: "", next: "" });
     notify("密碼已更新");
   };
+  const logoutUser = () => {
+    sessionStorage.setItem("askroom-logged-out", "true");
+    setCurrentUser(null);
+    setSelectedCourse(null);
+    setModal(null);
+  };
 
   return (
     <div className="app-shell">
@@ -585,7 +593,7 @@ function App() {
           userLoginForm={userLoginForm}
           setUserLoginForm={setUserLoginForm}
           setModal={setModal}
-          setCurrentUser={setCurrentUser}
+          logoutUser={logoutUser}
           setSelectedCourse={setSelectedCourse}
           notify={notify}
           courseQuestions={courseQuestions}
@@ -1086,7 +1094,7 @@ function UserView({
   userLoginForm,
   setUserLoginForm,
   setModal,
-  setCurrentUser,
+  logoutUser,
   setSelectedCourse,
   courseQuestions,
   newQuestion,
@@ -1143,9 +1151,7 @@ function UserView({
             onClick={(event) => {
               event.preventDefault();
               event.stopPropagation();
-              setCurrentUser(null);
-              setSelectedCourse(null);
-              setModal(null);
+              logoutUser();
             }}
           >
             <LogOut size={16} /> <span>登出</span>
