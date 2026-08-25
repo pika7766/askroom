@@ -341,6 +341,9 @@ textarea:focus {
   font-size: 12px;
   text-align: left;
 }
+.accounts-btn { display: flex; align-items: center; gap: 8px; width: 100%; margin-top: 18px; padding: 11px 9px; color: #557269; background: #e4eee3; border: 1px solid #d0ded1; border-radius: 4px; font-size: 12px; text-align: left; }
+.accounts-btn:hover { color: var(--green); background: #fffefa; }
+.accounts-btn span { margin-left: auto; color: #8da198; font: 10px 'DM Mono'; }
 .content-panel,
 .student-content {
   padding: 54px 5vw;
@@ -747,6 +750,19 @@ textarea:focus {
   font-size: 12px;
   line-height: 1.7;
 }
+.account-list { display: flex; flex-direction: column; gap: 6px; margin-top: 22px; }
+.account-row { display: flex; align-items: center; gap: 10px; width: 100%; padding: 11px 9px; color: var(--ink); background: #f4f7f1; border: 1px solid #e1e9df; border-radius: 4px; text-align: left; }
+.account-row:hover { background: #e6f2e7; border-color: #c7dfcd; }
+.account-row > span:nth-child(2) { flex: 1; }
+.account-row strong, .account-row small { display: block; }
+.account-row strong { font-size: 13px; }
+.account-row small { margin-top: 3px; color: #83948b; font: 10px 'DM Mono'; }
+.account-summary { display: grid; gap: 12px; margin-top: 22px; }
+.account-summary > div { padding: 13px; background: #f3f6f0; border: 1px solid #e2e9df; border-radius: 4px; }
+.account-summary span, .account-summary strong { display: block; }
+.account-summary span { color: #84948b; font-size: 11px; }
+.account-summary strong { margin-top: 6px; color: var(--ink); font-size: 14px; line-height: 1.6; }
+.account-summary .unanswered-text { color: #b05c4e; }
 .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

@@ -16,6 +16,7 @@ import {
   Bell,
   Paperclip,
   SlidersHorizontal,
+  Users,
   ShieldCheck,
   Trash2,
   X,
@@ -106,7 +107,7 @@ function load(key, fallback) {
 
 function normalizeCourse(course) {
   const { allowChat, ...courseWithoutChat } = course;
-  return { allowReplies: true, allowFiles: false, ...courseWithoutChat };
+  return { allowReplies: true, allowFiles: false, questionSort: "time", ...courseWithoutChat };
 }
 function normalizeQuestion(question) {
   const { messages, ...questionWithoutChat } = question;
@@ -166,7 +167,10 @@ function App() {
   const [courseSettings, setCourseSettings] = useState({
     allowReplies: true,
     allowFiles: false,
+    questionSort: "time",
+    password: "",
   });
+  const [accountDetail, setAccountDetail] = useState(null);
   const remoteStateReady = useRef(false);
 
   useEffect(
@@ -280,8 +284,13 @@ function App() {
   }, [courses, selectedCourse]);
 
   const courseQuestions = useMemo(
-    () =>
-      questions.filter((question) => question.courseId === selectedCourse?.id),
+    () => {
+      const filtered = questions.filter((question) => String(question.courseId) === String(selectedCourse?.id));
+      if (selectedCourse?.questionSort === "unanswered") {
+        return [...filtered].sort((a, b) => Number(!b.reply) - Number(!a.reply) || Number(b.id) - Number(a.id));
+      }
+      return [...filtered].sort((a, b) => Number(b.id) - Number(a.id));
+    },
     [questions, selectedCourse],
   );
   const changeView = (next) => {
@@ -312,16 +321,34 @@ function App() {
         newValue: JSON.stringify(value),
       });
   };
+  const broadcastFullState = (nextState) => {
+    localStorage.setItem("askroom-courses", JSON.stringify(nextState.courses));
+    localStorage.setItem("askroom-users", JSON.stringify(nextState.users));
+    localStorage.setItem("askroom-questions", JSON.stringify(nextState.questions));
+    fetch("/api/state", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(nextState),
+    }).catch(() => {});
+    if ("BroadcastChannel" in window) {
+      const channel = new BroadcastChannel("askroom-sync");
+      ["askroom-courses", "askroom-users", "askroom-questions"].forEach((key) => channel.postMessage({ key, newValue: JSON.stringify(nextState[key]) }));
+      channel.close();
+    }
+  };
   const openCourseSettings = (course) => {
     setCourseSettings({
       allowReplies: true,
       allowFiles: false,
+      questionSort: "time",
       ...course,
     });
     setModal("course-settings");
   };
   const saveCourseSettings = (event) => {
     event.preventDefault();
+    if (courseSettings.private && !courseSettings.password.trim())
+      return notify("隱私課程必須設定密碼");
     const nextCourses = courses.map((course) =>
       course.id === selectedCourse.id
         ? { ...course, ...courseSettings }
@@ -526,21 +553,20 @@ function App() {
   };
   const deleteCourse = (course) => {
     if (window.confirm(`確定刪除「${course.name}」？`)) {
-      const nextCourses = courses.filter((item) => item.id !== course.id);
+      const nextCourses = courses.filter((item) => String(item.id) !== String(course.id));
       const nextQuestions = questions.filter(
-        (item) => item.courseId !== course.id,
+        (item) => String(item.courseId) !== String(course.id),
       );
       setCourses(nextCourses);
       setQuestions(nextQuestions);
       setSelectedCourse(null);
-      broadcast("askroom-courses", nextCourses);
-      broadcast("askroom-questions", nextQuestions);
+      broadcastFullState({ courses: nextCourses, users, questions: nextQuestions });
       notify("課程已刪除");
     }
   };
   const deleteQuestion = (question) => {
     if (!window.confirm("確定要刪除這則提問嗎？刪除後無法復原。")) return;
-    const nextQuestions = questions.filter((item) => item.id !== question.id);
+    const nextQuestions = questions.filter((item) => String(item.id) !== String(question.id));
     setQuestions(nextQuestions);
     if (openQuestion?.id === question.id) setOpenQuestion(null);
     broadcast("askroom-questions", nextQuestions);
@@ -610,6 +636,8 @@ function App() {
           chooseCourse={chooseCourse}
           deleteCourse={deleteCourse}
           deleteQuestion={deleteQuestion}
+          users={users}
+          setAccountDetail={setAccountDetail}
           setModal={setModal}
           openCourseSettings={openCourseSettings}
           courseQuestions={courseQuestions}
@@ -711,12 +739,20 @@ function App() {
         <Modal title="課程功能設定" close={() => setModal(null)}>
           <form className="form-stack" onSubmit={saveCourseSettings}>
             <p className="modal-copy">打開後，學生就能在這堂課使用對應功能。</p>
+            <Field label="隱私課程密碼（留空代表公開課程）">
+              <input type="text" value={courseSettings.password || ""} onChange={(event) => setCourseSettings({ ...courseSettings, password: event.target.value, private: Boolean(event.target.value.trim()) })} placeholder="設定或修改密碼" />
+            </Field>
             <CapabilityToggle icon={<Reply size={16} />} label="開放老師回覆" value={courseSettings.allowReplies} onChange={(value) => setCourseSettings({ ...courseSettings, allowReplies: value })} />
             <CapabilityToggle icon={<Paperclip size={16} />} label="開放照片與檔案" value={courseSettings.allowFiles} onChange={(value) => setCourseSettings({ ...courseSettings, allowFiles: value })} />
+            <Field label="提問排列方式">
+              <select value={courseSettings.questionSort || "time"} onChange={(event) => setCourseSettings({ ...courseSettings, questionSort: event.target.value })}><option value="time">依發送時間（最新在上）</option><option value="unanswered">未回覆提問優先</option></select>
+            </Field>
             <button className="primary-btn full" type="submit">儲存設定 <Check size={16} /></button>
           </form>
         </Modal>
       )}
+      {modal === "accounts" && <Modal title="一般使用者帳號" close={() => setModal(null)}><div className="account-list">{users.length === 0 ? <p className="modal-copy">目前沒有一般使用者帳號。</p> : users.map((user) => <button className="account-row" key={user.id} onClick={() => setAccountDetail(user)}><span className="avatar">{user.name.slice(0, 1)}</span><span><strong>{user.name}</strong><small>{user.access?.length || 0} 門課程 · {questions.filter((question) => question.user === user.name).length} 則提問</small></span><ArrowRight size={15} /></button>)}</div></Modal>}
+      {accountDetail && <Modal title={`帳號：${accountDetail.name}`} close={() => setAccountDetail(null)}><div className="account-summary"><div><span>已加入課程</span><strong>{accountDetail.access?.map((id) => courses.find((course) => String(course.id) === String(id))?.name).filter(Boolean).join("、") || "尚未加入課程"}</strong></div><div><span>提問總數</span><strong>{questions.filter((question) => question.user === accountDetail.name).length} 則</strong></div><div><span>未回覆提問</span><strong className={questions.some((question) => question.user === accountDetail.name && !question.reply) ? "unanswered-text" : ""}>{questions.filter((question) => question.user === accountDetail.name && !question.reply).length ? "有" : "沒有"}</strong></div></div></Modal>}
       {modal === "join-course" && (
         <Modal title="加入新課程" close={() => setModal(null)}>
           <form className="form-stack" onSubmit={joinCourse}>
@@ -779,7 +815,7 @@ function App() {
             <p>
               {notice.type === "question"
                 ? "有一位使用者剛剛送出問題，點擊下方按鈕直接查看。"
-                : "老師或同學在你的問題下留下了新訊息，點擊下方按鈕直接查看。"}
+                : "老師在你的問題下留下了新訊息，點擊下方按鈕直接查看。"}
             </p>
           </div>
           <button className="primary-btn full" onClick={selectNotice}>
@@ -913,6 +949,8 @@ function AdminView({
   chooseCourse,
   deleteCourse,
   deleteQuestion,
+  users,
+  setAccountDetail,
   setModal,
   openCourseSettings,
   courseQuestions,
@@ -999,6 +1037,7 @@ function AdminView({
             </button>
           ))}
         </div>
+        <button className="accounts-btn" onClick={() => setModal("accounts")}><Users size={16} /> 一般使用者帳號 <span>{users.length}</span></button>
         <button className="logout-btn" onClick={() => setAdmin(false)}>
           <LogOut size={16} /> 登出後台
         </button>
