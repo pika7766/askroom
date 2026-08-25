@@ -752,7 +752,7 @@ function App() {
         </Modal>
       )}
       {modal === "accounts" && <Modal title="一般使用者帳號" close={() => setModal(null)}><div className="account-list">{users.length === 0 ? <p className="modal-copy">目前沒有一般使用者帳號。</p> : users.map((user) => <button className="account-row" key={user.id} onClick={() => setAccountDetail(user)}><span className="avatar">{user.name.slice(0, 1)}</span><span><strong>{user.name}</strong><small>{user.access?.length || 0} 門課程 · {questions.filter((question) => question.user === user.name).length} 則提問</small></span><ArrowRight size={15} /></button>)}</div></Modal>}
-      {accountDetail && <Modal title={`帳號：${accountDetail.name}`} close={() => setAccountDetail(null)}><div className="account-summary"><div><span>已加入課程</span><strong>{accountDetail.access?.map((id) => courses.find((course) => String(course.id) === String(id))?.name).filter(Boolean).join("、") || "尚未加入課程"}</strong></div><div><span>提問總數</span><strong>{questions.filter((question) => question.user === accountDetail.name).length} 則</strong></div><div><span>未回覆提問</span><strong className={questions.some((question) => question.user === accountDetail.name && !question.reply) ? "unanswered-text" : ""}>{questions.filter((question) => question.user === accountDetail.name && !question.reply).length ? "有" : "沒有"}</strong></div></div></Modal>}
+      {accountDetail && <Modal title={`帳號：${accountDetail.name}`} close={() => setAccountDetail(null)}><div className="account-summary"><div><span>已加入課程</span><strong>{accountDetail.access?.map((id) => courses.find((course) => String(course.id) === String(id))?.name).filter(Boolean).join("、") || "尚未加入課程"}</strong></div><div><span>提問總數</span><strong>{questions.filter((question) => question.user === accountDetail.name).length} 則</strong></div><div><span>未回覆提問</span><strong className={questions.some((question) => question.user === accountDetail.name && !question.reply) ? "unanswered-text" : ""}>{questions.filter((question) => question.user === accountDetail.name && !question.reply).length} 則</strong></div></div></Modal>}
       {modal === "join-course" && (
         <Modal title="加入新課程" close={() => setModal(null)}>
           <form className="form-stack" onSubmit={joinCourse}>
@@ -1037,7 +1037,7 @@ function AdminView({
             </button>
           ))}
         </div>
-        <button className="accounts-btn" onClick={() => setModal("accounts")}><Users size={16} /> 一般使用者帳號 <span>{users.length}</span></button>
+        <button className="accounts-btn" onClick={() => setModal("accounts")}><Users size={16} /> 一般使用者帳號（一般使用者總人數：{users.length}）</button>
         <button className="logout-btn" onClick={() => setAdmin(false)}>
           <LogOut size={16} /> 登出後台
         </button>
