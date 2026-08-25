@@ -10,16 +10,23 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 let appState = null;
 let pool = null;
-const useMemoryStorage = !process.env.DATABASE_URL;
+let useMemoryStorage = !process.env.DATABASE_URL;
 
 if (!useMemoryStorage) {
-  pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    family: 4,
-    ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
-  });
-  await pool.query(`CREATE TABLE IF NOT EXISTS app_state (id integer PRIMARY KEY, data jsonb NOT NULL, updated_at timestamptz NOT NULL DEFAULT now())`);
-  console.log("✓ PostgreSQL connected");
+  try {
+    pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      family: 4,
+      ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
+    });
+    await pool.query(`CREATE TABLE IF NOT EXISTS app_state (id integer PRIMARY KEY, data jsonb NOT NULL, updated_at timestamptz NOT NULL DEFAULT now())`);
+    console.log("✓ PostgreSQL connected");
+  } catch (error) {
+    await pool?.end().catch(() => {});
+    pool = null;
+    useMemoryStorage = true;
+    console.error(`⚠ PostgreSQL unavailable (${error.code || error.message}). Running with in-memory storage; configure an IPv4-compatible Pooler DATABASE_URL for persistent shared data.`);
+  }
 } else {
   console.log("⚠ Running with in-memory storage (not persistent). To enable persistent shared state, set DATABASE_URL environment variable with a PostgreSQL connection string.");
 }
