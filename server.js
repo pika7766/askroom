@@ -13,7 +13,11 @@ let pool = null;
 const useMemoryStorage = !process.env.DATABASE_URL;
 
 if (!useMemoryStorage) {
-  pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false });
+  pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    family: 4,
+    ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
+  });
   await pool.query(`CREATE TABLE IF NOT EXISTS app_state (id integer PRIMARY KEY, data jsonb NOT NULL, updated_at timestamptz NOT NULL DEFAULT now())`);
   console.log("✓ PostgreSQL connected");
 } else {
