@@ -572,6 +572,15 @@ function App() {
     broadcast("askroom-questions", nextQuestions);
     notify("提問已刪除");
   };
+  const deleteUser = (user) => {
+    if (window.confirm(`確定刪除「${user.name}」的帳號？此操作無法復原。`)) {
+      const nextUsers = users.filter((item) => String(item.id) !== String(user.id));
+      setUsers(nextUsers);
+      setAccountDetail(null);
+      broadcast("askroom-users", nextUsers);
+      notify("使用者帳號已刪除");
+    }
+  };
   const changePassword = (event) => {
     event.preventDefault();
     if (passwordForm.old !== currentUser.password)
@@ -752,7 +761,47 @@ function App() {
         </Modal>
       )}
       {modal === "accounts" && <Modal title="一般使用者帳號" close={() => setModal(null)}><div className="account-list">{users.length === 0 ? <p className="modal-copy">目前沒有一般使用者帳號。</p> : users.map((user) => <button className="account-row" key={user.id} onClick={() => setAccountDetail(user)}><span className="avatar">{user.name.slice(0, 1)}</span><span><strong>{user.name}</strong><small>{user.access?.length || 0} 門課程 · {questions.filter((question) => question.user === user.name).length} 則提問</small></span><ArrowRight size={15} /></button>)}</div></Modal>}
-      {accountDetail && <Modal title={`帳號：${accountDetail.name}`} close={() => setAccountDetail(null)}><div className="account-summary"><div><span>已加入課程</span><strong>{accountDetail.access?.map((id) => courses.find((course) => String(course.id) === String(id))?.name).filter(Boolean).join("、") || "尚未加入課程"}</strong></div><div><span>提問總數</span><strong>{questions.filter((question) => question.user === accountDetail.name).length} 則</strong></div><div><span>未回覆提問</span><strong className={questions.some((question) => question.user === accountDetail.name && !question.reply) ? "unanswered-text" : ""}>{questions.filter((question) => question.user === accountDetail.name && !question.reply).length} 則</strong></div></div></Modal>}
+      {accountDetail && (
+        <Modal title={`帳號：${accountDetail.name}`} close={() => setAccountDetail(null)}>
+          <div className="account-summary">
+            <div>
+              <span>已加入課程</span>
+              <strong>
+                {accountDetail.access
+                  ?.map((id) =>
+                    courses.find((course) => String(course.id) === String(id))?.name,
+                  )
+                  .filter(Boolean)
+                  .join("、") || "尚未加入課程"}
+              </strong>
+            </div>
+            <div>
+              <span>提問總數</span>
+              <strong>{questions.filter((question) => question.user === accountDetail.name).length} 則</strong>
+            </div>
+            <div>
+              <span>未回覆提問</span>
+              <strong
+                className={
+                  questions.some(
+                    (question) =>
+                      question.user === accountDetail.name && !question.reply,
+                  )
+                    ? "unanswered-text"
+                    : ""
+                }
+              >
+                {questions.filter((question) => question.user === accountDetail.name && !question.reply)
+                  .length}{" "}
+                則
+              </strong>
+            </div>
+          </div>
+          <button className="danger-btn full" onClick={() => deleteUser(accountDetail)}>
+            <Trash2 size={15} /> 刪除帳號
+          </button>
+        </Modal>
+      )}
       {modal === "join-course" && (
         <Modal title="加入新課程" close={() => setModal(null)}>
           <form className="form-stack" onSubmit={joinCourse}>
